@@ -36,6 +36,7 @@ namespace TidyTabs2019
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(TidyTabs2019Package.PackageGuidString)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionOpening_string, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideOptionPage(typeof(TidyTabsOptionPage), "Tidy Tabs", "Options", 1000, 1001, false)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     public sealed class TidyTabs2019Package : AsyncPackage, IVsBroadcastMessageEvents, IDisposable
@@ -189,10 +190,10 @@ namespace TidyTabs2019
                 {
                     var idleTime = DateTime.Now - lastAction;
 
-                    foreach (var windowTimePair in documentLastSeen)
-                    {
-                        UpdateWindowTimestamp(windowTimePair.Key, windowTimePair.Value.Add(idleTime));
-                    }
+                    //foreach (var windowTimePair in documentLastSeen)
+                    //{
+                    //    UpdateWindowTimestamp(windowTimePair.Key, windowTimePair.Value.Add(idleTime));
+                    //}
                 }
             }
 
@@ -244,6 +245,7 @@ namespace TidyTabs2019
                 MenuCommand menuItem = new MenuCommand(TidyTabsMenuItemCommandActivated, menuCommandId);
                 menuCommandService.AddCommand(menuItem);
             }
+            InitWithOpenWindows();
         }
 
         /// <summary>Closes stale windows when a build is triggered</summary>
@@ -420,6 +422,11 @@ namespace TidyTabs2019
         /// </summary>
         private void SolutionEventsOnOpened()
         {
+            InitWithOpenWindows();
+        }
+
+        private void InitWithOpenWindows()
+        {
             try
             {
                 foreach (var window in VisualStudio.Windows.GetDocumentWindows())
@@ -465,7 +472,14 @@ namespace TidyTabs2019
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             // Ignore tool windows
-            if (window == null || window.Linkable)
+            try
+            {
+                if (window == null || window.Linkable)
+                {
+                    return;
+                }
+            }
+            catch (ObjectDisposedException) 
             {
                 return;
             }
